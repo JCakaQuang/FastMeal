@@ -12,7 +12,7 @@ import { ChatService } from './chat.service';
 
 @WebSocketGateway({
   cors: {
-    origin: 'http://localhost:3001',
+    origin: ['http://localhost:3001', 'https://nvn5nfqp-3001.asse.devtunnels.ms'],
     credentials: true,
   },
   namespace: '/chat',
@@ -41,6 +41,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ) {
     this.connectedUsers.set(client.id, data);
 
+    // Join user-specific room for targeted notifications
+    client.join(`user:${data.userId}`);
+
     if (data.role === 'staff') {
       client.join('staff-room');
     }
@@ -49,6 +52,19 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
 
     return { status: 'ok' };
+  }
+
+  /**
+   * Notify a specific user about their order status change.
+   * Called externally from OrdersController.
+   */
+  notifyOrderStatusChange(userId: string, orderId: string, status: string, orderCode: string) {
+    this.server.to(`user:${userId}`).emit('order:statusChanged', {
+      orderId,
+      status,
+      orderCode,
+      timestamp: new Date().toISOString(),
+    });
   }
 
   // Customer starts chat with staff

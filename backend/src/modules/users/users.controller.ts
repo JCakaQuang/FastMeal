@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Body, Param, UseGuards, Request, NotFoundException } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards, Request, NotFoundException } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
@@ -44,5 +44,11 @@ export class UsersController {
   ) {
     const user = await this.usersService.updateRole(id, updateRoleDto.role);
     return { message: 'Cập nhật vai trò thành công', user };
+  }
+
+  @Delete(':id')
+  async deleteUser(@Param('id') id: string) {
+    const user = await this.usersService.deleteUser(id);
+    return { message: 'Xóa người dùng thành công', user };
   }
 }

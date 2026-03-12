@@ -6,6 +6,8 @@ import { DishesModule } from './modules/dishes/dishes.module';
 import { DailyMenuModule } from './modules/daily-menu/daily-menu.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { ChatModule } from './modules/chat/chat.module';
+import { OrdersModule } from './modules/orders/orders.module';
+import { BranchesModule } from './modules/branches/branches.module';
 
 @Module({
   imports: [
@@ -24,6 +26,8 @@ import { ChatModule } from './modules/chat/chat.module';
     DailyMenuModule,
     AuthModule,
     ChatModule,
+    OrdersModule,
+    BranchesModule,
   ],
 })
 export class AppModule {}

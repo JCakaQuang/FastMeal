@@ -61,4 +61,12 @@ export class UsersService {
 
     return user;
   }
+
+  async deleteUser(id: string): Promise<User> {
+    const user = await this.userModel.findByIdAndDelete(id).select('-password');
+    if (!user) {
+      throw new NotFoundException('Không tìm thấy người dùng');
+    }
+    return user;
+  }
 }
