@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 
+
 describe('AuthController', () => {
   let controller: AuthController;
   let authService: jest.Mocked<AuthService>;
@@ -27,7 +28,28 @@ describe('AuthController', () => {
 
     const result = await controller.login({ identifier: 'u1@test.com', password: '123456' });
 
-    expect(authService.login).toHaveBeenCalledWith('u1@test.com', '123456');
+    expect(authService.login).toHaveBeenCalledWith('u1@test.com', '123456', {
+      captchaId: undefined,
+      captchaAnswer: undefined,
+    });
+    expect(result).toEqual(expected);
+  });
+
+  it('passes captcha payload to AuthService', async () => {
+    const expected = { userId: 'u1', fullName: 'U1', email: 'u1@test.com', role: 'customer' };
+    authService.login.mockResolvedValue(expected as any);
+
+    const result = await controller.login({
+      identifier: 'u1@test.com',
+      password: '123456',
+      captchaId: 'captcha-1',
+      captchaAnswer: '9',
+    });
+
+    expect(authService.login).toHaveBeenCalledWith('u1@test.com', '123456', {
+      captchaId: 'captcha-1',
+      captchaAnswer: '9',
+    });
     expect(result).toEqual(expected);
   });
 });

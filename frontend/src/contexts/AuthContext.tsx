@@ -1,14 +1,14 @@
 "use client";
 
-import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from "react";
+import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
 
 import { fetchUserProfile } from "@/lib/api";
 
 function getApiBaseUrl() {
-  if (typeof window !== 'undefined' && window.location.hostname.includes('devtunnels.ms')) {
-    return window.location.origin.replace('-3001', '-3000');
+  if (typeof window !== "undefined" && window.location.hostname.includes("devtunnels.ms")) {
+    return window.location.origin.replace("-3001", "-3000");
   }
-  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+  return process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
 }
 const API_BASE_URL = getApiBaseUrl();
 
@@ -21,12 +21,28 @@ export interface User {
   address?: string;
 }
 
+export interface LoginCaptchaChallenge {
+  id: string;
+  question: string;
+}
+
+export interface LoginResult {
+  success: boolean;
+  error?: string;
+  captchaRequired?: boolean;
+  captchaChallenge?: LoginCaptchaChallenge;
+}
+
 interface AuthContextType {
   user: User | null;
   isAuthOpen: boolean;
   authMode: "login" | "register";
   isOrderHistoryOpen: boolean;
-  login: (identifier: string, password: string) => Promise<boolean>;
+  login: (
+    identifier: string,
+    password: string,
+    captcha?: { captchaId?: string; captchaAnswer?: string }
+  ) => Promise<LoginResult>;
   register: (name: string, email: string, password: string) => Promise<boolean>;
   logout: () => void;
   openAuth: (mode?: "login" | "register") => void;
@@ -46,7 +62,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isOrderHistoryOpen, setIsOrderHistoryOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Load saved user from localStorage on mount
   useEffect(() => {
     const saved = localStorage.getItem("fastmeal_user");
     if (saved) {
@@ -58,7 +73,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // Persist user to localStorage
   useEffect(() => {
     if (user) {
       localStorage.setItem("fastmeal_user", JSON.stringify(user));
@@ -84,7 +98,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         const data = await res.json();
-        // data = { message: '...', userId: '...' }
         setUser({
           id: data.userId,
           name,
@@ -103,20 +116,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const login = useCallback(
-    async (identifier: string, password: string): Promise<boolean> => {
+    async (
+      identifier: string,
+      password: string,
+      captcha?: { captchaId?: string; captchaAnswer?: string }
+    ): Promise<LoginResult> => {
       setIsLoading(true);
       try {
         const res = await fetch(`${API_BASE_URL}/auth/login`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ identifier, password }),
+          body: JSON.stringify({ identifier, password, ...captcha }),
         });
 
+        const data = await res.json().catch(() => null);
+
         if (!res.ok) {
-          return false;
+          return {
+            success: false,
+            error:
+              data?.message && typeof data.message === "string"
+                ? data.message
+                : "Tài khoản hoặc mật khẩu không đúng!",
+            captchaRequired: Boolean(data?.captchaRequired),
+            captchaChallenge: data?.captchaChallenge,
+          };
         }
 
-        const data = await res.json();
         setUser({
           id: data.userId,
           name: data.fullName,
@@ -124,9 +150,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           role: data.role,
         });
         setIsAuthOpen(false);
-        return true;
+        return { success: true };
       } catch {
-        return false;
+        return {
+          success: false,
+          error: "Không thể kết nối đến máy chủ!",
+        };
       } finally {
         setIsLoading(false);
       }
@@ -147,10 +176,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const closeAuth = useCallback(() => setIsAuthOpen(false), []);
 
   const openOrderHistory = useCallback(() => setIsOrderHistoryOpen(true), []);
-  const closeOrderHistory = useCallback(
-    () => setIsOrderHistoryOpen(false),
-    []
-  );
+  const closeOrderHistory = useCallback(() => setIsOrderHistoryOpen(false), []);
 
   const updateProfile = useCallback(
     (data: Partial<User>) => {
@@ -161,7 +187,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [user]
   );
 
-  // Periodic refresh to sync role changes from server
   const refreshUser = useCallback(async () => {
     if (!user) return;
     try {
@@ -182,7 +207,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [user]);
 
-  // Poll every 30 seconds + on window focus
   useEffect(() => {
     if (!user) return;
 

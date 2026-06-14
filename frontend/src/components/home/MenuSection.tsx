@@ -41,12 +41,12 @@ export default function MenuSection() {
     let result = dishes;
 
     // Search filter
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
+    const trimmedQuery = searchQuery.trim().toLowerCase();
+    if (trimmedQuery) {
       result = result.filter(
         (d) =>
-          d.name.toLowerCase().includes(q) ||
-          (d.description && d.description.toLowerCase().includes(q))
+          d.name.toLowerCase().includes(trimmedQuery) ||
+          (d.description && d.description.toLowerCase().includes(trimmedQuery))
       );
     }
 

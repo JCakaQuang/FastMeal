@@ -198,7 +198,8 @@ export default function MenuManagementPage() {
   };
 
   const filteredDishes = dishes.filter((d) => {
-    const matchSearch = d.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const trimmedQuery = searchQuery.trim().toLowerCase();
+    const matchSearch = d.name.toLowerCase().includes(trimmedQuery);
     const matchCategory = filterCategory === "all" || d.category === filterCategory;
     return matchSearch && matchCategory;
   });

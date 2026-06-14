@@ -1,7 +1,7 @@
 "use client";
 
-import { X, Mail, Lock, User } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
+import { X, Mail, Lock, User, ShieldCheck } from "lucide-react";
+import { LoginCaptchaChallenge, useAuth } from "@/contexts/AuthContext";
 import { useState } from "react";
 
 export default function AuthModal() {
@@ -13,6 +13,8 @@ export default function AuthModal() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [captchaAnswer, setCaptchaAnswer] = useState("");
+  const [captchaChallenge, setCaptchaChallenge] = useState<LoginCaptchaChallenge | null>(null);
   const [error, setError] = useState("");
 
   const resetForm = () => {
@@ -21,15 +23,31 @@ export default function AuthModal() {
     setEmail("");
     setPassword("");
     setConfirmPassword("");
+    setCaptchaAnswer("");
+    setCaptchaChallenge(null);
     setError("");
   };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    const success = await login(identifier, password);
-    if (!success) {
-      setError("Tài khoản hoặc mật khẩu không đúng!");
+
+    if (captchaChallenge && !captchaAnswer.trim()) {
+      setError("Vui lòng nhập mã xác minh captcha!");
+      return;
+    }
+
+    const result = await login(identifier, password, {
+      captchaId: captchaChallenge?.id,
+      captchaAnswer,
+    });
+
+    if (!result.success) {
+      if (result.captchaRequired && result.captchaChallenge) {
+        setCaptchaChallenge(result.captchaChallenge);
+        setCaptchaAnswer("");
+      }
+      setError(result.error || "Tài khoản hoặc mật khẩu không đúng!");
     } else {
       resetForm();
     }
@@ -186,6 +204,33 @@ export default function AuthModal() {
                 />
               </div>
             </div>
+
+            {/* Captcha after repeated failed login attempts */}
+            {authMode === "login" && captchaChallenge && (
+              <div className="rounded-xl border border-yellow-500/50 bg-yellow-500/10 p-4 space-y-3">
+                <div className="flex items-start gap-3 text-yellow-100">
+                  <ShieldCheck className="mt-0.5 text-yellow-400" size={20} />
+                  <div>
+                    <p className="font-bold">Xác minh captcha</p>
+                    <p className="text-sm text-yellow-200/90">
+                      Bạn đã đăng nhập sai quá 5 lần liên tiếp. Vui lòng trả lời phép tính để tiếp tục.
+                    </p>
+                  </div>
+                </div>
+                <label className="block text-white text-sm font-bold">
+                  {captchaChallenge.question}
+                </label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={captchaAnswer}
+                  onChange={(e) => setCaptchaAnswer(e.target.value)}
+                  placeholder="Nhập kết quả captcha"
+                  required
+                  className="w-full bg-[#243447] border border-[#364b63] rounded-lg py-3 px-4 text-white placeholder-gray-500 focus:outline-none focus:border-[#FF6B35] transition-colors"
+                />
+              </div>
+            )}
 
             {/* Confirm password (register) */}
             {authMode === "register" && (
